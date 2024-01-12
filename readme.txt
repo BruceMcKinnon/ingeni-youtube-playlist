@@ -18,7 +18,7 @@ Display a grid of YouTube videos from a playlist or channel.
 
 == Installation ==
 
-1. Upload the 'ingeni-yt-playlist' folder to the '/wp-content/plugins/' directory.
+1. Upload the 'ingeni-youtube-playlist' folder to the '/wp-content/plugins/' directory.
 
 2. Activate the plugin through the 'Plugins' menu in WordPress.
 
@@ -65,11 +65,11 @@ The playlist ID is PLi66rcYcdNzmQmYGm2sN3RESydBvdJM5q
 
 Use the shortcode like:
 
-[ingeni-yt-grid channel_id="{your-youtube-channel-id}" yt_api_key="{your_youtube_api_key}"]
+[ingeni-youtube-playlist channel_id="{your-youtube-channel-id}" yt_api_key="{your_youtube_api_key}"]
 
 Or:
 
-[ingeni-yt-grid playlist_id="{your-youtube-playlist-id}" yt_api_key="{your_youtube_api_key}"]
+[ingeni-youtube-playlist playlist_id="{your-youtube-playlist-id}" yt_api_key="{your_youtube_api_key}"]
 
 
 The following parameters may be included:
@@ -89,7 +89,7 @@ framework: Both Bootstrap 5 and Foundation 6 row and column classes are supporte
 
 To use Foundation 6 classes:
 
-[ingeni-yt-grid framework="foundation" playlist_id="{your-youtube-playlist-id}" yt_api_key="{your_youtube_api_key}"]
+[ingeni-youtube-playlist framework="foundation" playlist_id="{your-youtube-playlist-id}" yt_api_key="{your_youtube_api_key}"]
 
 If no framework value is provide, Bootstrap 5 classes are used.
 
