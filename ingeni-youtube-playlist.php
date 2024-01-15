@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Ingeni YouTube Playlist
-Version: 2024.01
+Version: 2024.02
 Plugin URI: http://ingeni.net
 Author: Bruce McKinnon - ingeni.net
 Author URI: http://ingeni.net
@@ -28,7 +28,16 @@ Disclaimer:
 Requires : Wordpress 6.x or newer ,PHP 7.4+
 
 v2024.01 - Initial version
+v2024.02 - Added options page to the Settings menu.
+		 - Improved on-screen error reporting.
 */
+
+
+define("IYTPL_API_KEY", "ingeni_ytplaylist_api_key");
+define("SAVE_IYTPL_SETTINGS", "Save Settings...");
+
+
+include_once('ingeni-youtube-playlist-settings.php');
 
 
 add_shortcode("ingeni-youtube-playlist", "ingeni_youtube_playlist");
@@ -44,13 +53,16 @@ function ingeni_youtube_playlist( $atts ) {
 	), $atts );
 
 	$retHtml = "";
-
+fb_log(print_r($params,true));
 	$googleApiUrl = '';
 	$isPlaylist = false;  // True if pulling a playlist, false if pulling a channel
 
 	// YouTube Data API v3 key
 	$apikey = $params['yt_api_key'];
-
+	// If not provided via shortcode, use the key stored in Settings > YouTube Playlist
+	if ($apikey == '') {
+		$apikey = get_option(IYTPL_API_KEY,'');
+	}
 	if ($apikey == '') {
 		$retHtml = '<p>ERROR: You must provide a Google API key with the YouTube Data API v3 AND YouTube Embedded Player API enabled.</p><p>Please make sure the key is permitted for use on your domain name.</p>';
 	} else {
@@ -62,8 +74,10 @@ function ingeni_youtube_playlist( $atts ) {
 		} elseif ( $params['channel_id'] ) {
 			$googleApiUrl = 'https://www.googleapis.com/youtube/v3/search?order=date&part=snippet&channelId='.$params['channel_id'].'&key='.$apikey.'&maxResults='.$params['max_results'];
 		}
+		//fb_log('url:.'.$googleApiUrl);
 
 		if ( $googleApiUrl ) {
+			$videoList = null;
 			try {
 				$ch = curl_init();
 					
@@ -75,20 +89,29 @@ function ingeni_youtube_playlist( $atts ) {
 				curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 				curl_setopt($ch, CURLOPT_AUTOREFERER, true);
 				curl_setopt($ch, CURLOPT_REFERER, get_bloginfo('url'));
-	//fb_log('send:.'.print_r($ch,true));			
+			//fb_log('send:.'.print_r($ch,true));			
 				$response = curl_exec($ch);
-	//fb_log('reponse:.'.print_r($response,true));
+			//fb_log('reponse:.'.print_r($response,true));
 				curl_close($ch);
 						
 				$videoList = json_decode($response);
-	//fb_log('list:'.print_r($videoList,true));
+			//fb_log('list:'.print_r($videoList,true));
 			} catch (Exception $ex) {
 				fb_log('ingeni_youtube_videos: '.$ex->message);
 			}
 
 			$video_count = 0;
 			if ( !empty($videoList) ) {
-				if ( $videoList->items ) {
+
+				if ( isset( $videoList->error ) ) {
+					$retHtml = '<p>API ERROR: Code: '.$videoList->error->code.' - '.$videoList->error->message.'</p>';
+					foreach($videoList->error->errors as $error) {
+						$retHtml .= '<p>   '.$error->message.' Domain: '.$error->domain.' Reason: '.$error->reason.'</p>';
+					}
+					$retHtml .= '<p>Playlist ID: '.$params['playlist_id'].'</p>';
+					$retHtml .= '<p>Channel ID: '.$params['channel_id'].'</p>';
+				
+				} elseif ( isset( $videoList->items ) ) {
 					// Framework row divs
 					if ( $params['framework'] == 'foundation' ) {
 						$retHtml = '<div class="grid-container '.$params['class'].'" id="ytEmbeds"><div class="grid-x grid-margin-x">';

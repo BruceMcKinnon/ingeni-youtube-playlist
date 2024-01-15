@@ -4,7 +4,7 @@ Contributors: Bruce McKinnon
 Tags: video, YouTube
 Requires at least: 6.0
 Tested up to: 6.4
-Stable tag: 2024.01
+Stable tag: 2024.02
 
 Display a grid of YouTube videos from a playlist or channel.
 
@@ -36,6 +36,8 @@ Go to API console at: https://console.cloud.google.com/apis/library
 
 For more help, go to: https://support.google.com/googleapi/answer/6158862?hl=en
 
+You may store the API key in Settings > YouTube Playlist admins settings, or you can provide it as a shortcake parameter.
+
 
 
 Q - Do I need to provide BOTH the channel ID and playlist ID?
@@ -65,11 +67,11 @@ The playlist ID is PLi66rcYcdNzmQmYGm2sN3RESydBvdJM5q
 
 Use the shortcode like:
 
-[ingeni-youtube-playlist channel_id="{your-youtube-channel-id}" yt_api_key="{your_youtube_api_key}"]
+[ingeni-youtube-playlist channel_id="{your-youtube-channel-id}"]
 
 Or:
 
-[ingeni-youtube-playlist playlist_id="{your-youtube-playlist-id}" yt_api_key="{your_youtube_api_key}"]
+[ingeni-youtube-playlist playlist_id="{your-youtube-playlist-id}"]
 
 
 The following parameters may be included:
@@ -98,3 +100,7 @@ If no framework value is provide, Bootstrap 5 classes are used.
 == Changelog ==
 
 v2024.01 - Initial version
+
+v2024.02 - Added options page to the Settings menu.
+	 - Improved on-screen error reporting.
+
