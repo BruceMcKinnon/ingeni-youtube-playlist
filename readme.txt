@@ -4,7 +4,7 @@ Contributors: Bruce McKinnon
 Tags: video, YouTube
 Requires at least: 6.0
 Tested up to: 6.4
-Stable tag: 2024.02
+Stable tag: 2024.03
 
 Display a grid of YouTube videos from a playlist or channel.
 
@@ -104,3 +104,4 @@ v2024.01 - Initial version
 v2024.02 - Added options page to the Settings menu.
 	 - Improved on-screen error reporting.
 
+v2024.03 - Improved JS to handle pages with no YT videos.

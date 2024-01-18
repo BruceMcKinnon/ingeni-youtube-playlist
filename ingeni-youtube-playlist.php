@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Ingeni YouTube Playlist
-Version: 2024.02
+Version: 2024.03
 Plugin URI: http://ingeni.net
 Author: Bruce McKinnon - ingeni.net
 Author URI: http://ingeni.net
@@ -30,6 +30,7 @@ Requires : Wordpress 6.x or newer ,PHP 7.4+
 v2024.01 - Initial version
 v2024.02 - Added options page to the Settings menu.
 		 - Improved on-screen error reporting.
+v2024.03 - Improved JS to handle pages with no YT videos.
 */
 
 
@@ -53,7 +54,7 @@ function ingeni_youtube_playlist( $atts ) {
 	), $atts );
 
 	$retHtml = "";
-fb_log(print_r($params,true));
+
 	$googleApiUrl = '';
 	$isPlaylist = false;  // True if pulling a playlist, false if pulling a channel
 

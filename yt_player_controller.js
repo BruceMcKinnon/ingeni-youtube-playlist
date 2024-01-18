@@ -17,32 +17,34 @@ function loadYtPlayers(targetId, embedClass) {
     var originUrl = document.location.origin;
 
 //console.log('targetDiv: '+targetDiv.id);
-    var player;
+    if ( (targetDiv) && (embedClass) ) {
 //console.log('embedclass='+embedClass);
-    const playerDivs = targetDiv.getElementsByClassName(embedClass);
+        const playerDivs = targetDiv.getElementsByClassName(embedClass);
+        if (playerDivs) {
 //console.log('playerDivs: '+playerDivs.length);
-    for (let i = 0; i < playerDivs.length; i++) {
-
-        var playerDivId = playerDivs[i].id;
-        const thisVideoDiv = document.getElementById(playerDivId);
-        let thisVideoId = thisVideoDiv.getAttribute("data-src");
-
-        var player;
-        player = new YT.Player(playerDivId, {
-            height: '390',
-            width: '640',
-            videoId: thisVideoId,
-            playerVars: {
-                'playsinline': 1
-            },
-            events: {
-                'onReady': onPlayerReady,
-                'onStateChange': onPlayerStateChange
+            for (let i = 0; i < playerDivs.length; i++) {
+        
+                var playerDivId = playerDivs[i].id;
+                const thisVideoDiv = document.getElementById(playerDivId);
+                let thisVideoId = thisVideoDiv.getAttribute("data-src");
+        
+                var player;
+                player = new YT.Player(playerDivId, {
+                    height: '390',
+                    width: '640',
+                    videoId: thisVideoId,
+                    playerVars: {
+                        'playsinline': 1
+                    },
+                    events: {
+                        'onReady': onPlayerReady,
+                        'onStateChange': onPlayerStateChange
+                    }
+                });
             }
-        });
+        }
     }
 }
-
 
 // The player is ready!
 function onPlayerReady(event) {
