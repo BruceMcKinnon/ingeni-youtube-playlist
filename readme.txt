@@ -108,6 +108,7 @@ v2024.01 - Initial version
 v2024.02 - Added options page to the Settings menu.
 	 - Improved on-screen error reporting.
 
-v2024.03 - Added 'debug' parameter to the shortcode
+v2024.03 - Improved JS to handle pages with no YT videos.
 
-v2024.04 - Added caching support. 0 = no caching. 10080mins = 1 week. Default = 1440mins (1 day).
+v2024.04 - Added 'debug' parameter to the shortcode
+	- Added caching support. 0 = no caching. 10080mins = 1 week. Default = 1440mins (1 day).
