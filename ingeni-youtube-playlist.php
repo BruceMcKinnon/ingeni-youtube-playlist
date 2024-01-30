@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Ingeni YouTube Playlist
-Version: 2024.03
+Version: 2024.04
 Plugin URI: http://ingeni.net
 Author: Bruce McKinnon - ingeni.net
 Author URI: http://ingeni.net
@@ -31,6 +31,7 @@ v2024.01 - Initial version
 v2024.02 - Added options page to the Settings menu.
 		 - Improved on-screen error reporting.
 v2024.03 - Improved JS to handle pages with no YT videos.
+v2024.04 - Added the 'debug' parameter to the shortcode.
 */
 
 
@@ -51,9 +52,12 @@ function ingeni_youtube_playlist( $atts ) {
 		'max_results' => 6,
 		'yt_api_key' => '',
 		'framework' => 'bootstrap',
+		'debug' => 0,
 	), $atts );
 
 	$retHtml = "";
+
+	ingeni_ytplaylist_log(print_r($params,true), $params['debug']);
 
 	$googleApiUrl = '';
 	$isPlaylist = false;  // True if pulling a playlist, false if pulling a channel
@@ -75,7 +79,7 @@ function ingeni_youtube_playlist( $atts ) {
 		} elseif ( $params['channel_id'] ) {
 			$googleApiUrl = 'https://www.googleapis.com/youtube/v3/search?order=date&part=snippet&channelId='.$params['channel_id'].'&key='.$apikey.'&maxResults='.$params['max_results'];
 		}
-		//fb_log('url:.'.$googleApiUrl);
+		ingeni_ytplaylist_log('url:.'.$googleApiUrl, $params['debug']);
 
 		if ( $googleApiUrl ) {
 			$videoList = null;
@@ -90,15 +94,19 @@ function ingeni_youtube_playlist( $atts ) {
 				curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 				curl_setopt($ch, CURLOPT_AUTOREFERER, true);
 				curl_setopt($ch, CURLOPT_REFERER, get_bloginfo('url'));
-			//fb_log('send:.'.print_r($ch,true));			
+
+				ingeni_ytplaylist_log('send:.'.print_r($ch,true), $params['debug']);		
 				$response = curl_exec($ch);
-			//fb_log('reponse:.'.print_r($response,true));
+
+
+				ingeni_ytplaylist_log('reponse:.'.print_r($response,true), $params['debug']);
 				curl_close($ch);
 						
 				$videoList = json_decode($response);
-			//fb_log('list:'.print_r($videoList,true));
+				ingeni_ytplaylist_log('list:'.print_r($videoList,true), $params['debug']);
+
 			} catch (Exception $ex) {
-				fb_log('ingeni_youtube_videos: '.$ex->message);
+				ingeni_ytplaylist_log('ingeni_youtube_videos: '.$ex->message, 1);
 			}
 
 			$video_count = 0;
@@ -184,6 +192,22 @@ function ingeni_youtube_playlist( $atts ) {
 	return $retHtml;
 }
 
+if (!function_exists("ingeni_ytplaylist_log")) {
+	function ingeni_ytplaylist_log($msg, $debug = 0) {
+		if ( $debug > 0 ) {
+			$upload_dir = wp_upload_dir();
+			$logFile = $upload_dir['basedir'] . '/' . 'ingeni_ytplaylist_log.txt';
+			date_default_timezone_set('Australia/Sydney');
+
+			// Now write out to the file
+			$log_handle = fopen($logFile, "a");
+			if ($log_handle !== false) {
+				fwrite($log_handle, date("H:i:s").": ".$msg."\r\n");
+				fclose($log_handle);
+			}
+		}
+	}
+}
 
 
 function ingeni_load_ytplaylist() {

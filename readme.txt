@@ -4,7 +4,7 @@ Contributors: Bruce McKinnon
 Tags: video, YouTube
 Requires at least: 6.0
 Tested up to: 6.4
-Stable tag: 2024.03
+Stable tag: 2024.04
 
 Display a grid of YouTube videos from a playlist or channel.
 
@@ -79,13 +79,17 @@ The following parameters may be included:
 
 channel_id: The ID of the YouTube channel you wish to display.
 
+
 playlist_id: The ID of the YouTube playlist you wish to display.
+
 
 yt_api_key: A valid Google API key, that provides access to the YouTube Data API v3. This can be obtained from https://console.cloud.google.com/apis/library.
 
 class: Wrapping class name for all of the videos. Defaults to 'yt_videos'.
 
+
 max_results: Max. number of videos to display. Default = 6.
+
 
 framework: Both Bootstrap 5 and Foundation 6 row and column classes are supported.
 
@@ -94,6 +98,10 @@ To use Foundation 6 classes:
 [ingeni-youtube-playlist framework="foundation" playlist_id="{your-youtube-playlist-id}" yt_api_key="{your_youtube_api_key}"]
 
 If no framework value is provide, Bootstrap 5 classes are used.
+
+
+debug: Switch on debug logging. 1 = on. 0 = off (default). Debug logs are written to the /wp-content/uploads folder.
+
 
 
 
@@ -105,3 +113,5 @@ v2024.02 - Added options page to the Settings menu.
 	 - Improved on-screen error reporting.
 
 v2024.03 - Improved JS to handle pages with no YT videos.
+
+v2024.04 - Added the 'debug' parameter to the shortcode.
