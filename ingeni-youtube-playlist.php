@@ -30,17 +30,103 @@ Requires : Wordpress 6.x or newer ,PHP 7.4+
 v2024.01 - Initial version
 v2024.02 - Added options page to the Settings menu.
 		 - Improved on-screen error reporting.
-v2024.03 - Improved JS to handle pages with no YT videos.
-v2024.04 - Added the 'debug' parameter to the shortcode.
+v2024.03 - Added 'debug' parameter to the shortcode
+v2024.04 - Added caching support
 */
 
 
 define("IYTPL_API_KEY", "ingeni_ytplaylist_api_key");
-define("SAVE_IYTPL_SETTINGS", "Save Settings...");
+define("IYTPL_FEED_CACHE", "ingeni_ytplaylist_feed.json");
+define("IYTPL_FEED_CACHE_MINS", 'ingeni_ytplaylist_cache_mins');
+define("IYTPL_FEED_CACHE_MINS_DEFAULT", 1440);
 
+define("SAVE_IYTPL_SETTINGS", "Save Settings...");
+define("CLEAR_IYTPL_CACHE", "Clear Cache");
 
 include_once('ingeni-youtube-playlist-settings.php');
 
+
+function ingeni_ytplaylist_get_feed( $googleApiUrl, $debug = 0 ) {
+	$use_cache = false;
+	$cache_file = null;
+
+	$videoList = '';
+
+	$upload_dir = wp_upload_dir();
+	$cached_json = $upload_dir['basedir'] . '/' . IYTPL_FEED_CACHE;
+
+	ingeni_ytplaylist_log('cache file:'.$cached_json, $debug);
+
+	if ( file_exists( $cached_json ) ) {
+		$cache_stats = stat($cached_json);
+		ingeni_ytplaylist_log('size:'.$cache_stats['size']. '  '.$cache_stats['mtime'] , $debug);
+
+		$current_time = time();
+		$cache_timeout_secs = get_option(IYTPL_FEED_CACHE_MINS, IYTPL_FEED_CACHE_MINS_DEFAULT ) * 60;
+
+		if ( $current_time > ($cache_stats['mtime'] + $cache_timeout_secs ) ) {
+			ingeni_ytplaylist_log('cache timeout' , $debug);
+			unlink( $cached_json ); // Delete the current cache
+			$use_cache = false;
+		} else {
+			$use_cache = true;
+		}
+
+		if ( $use_cache ) {
+			ingeni_ytplaylist_log('reading cache file!' , $debug);
+			$cache_file = fopen($cached_json, 'r');
+			$response = fread($cache_file, $cache_stats['size'] );
+			fclose($cache_file);
+			$cache_file = null;
+		}
+	}
+
+
+
+	if ( !$use_cache ) {
+		try {
+			$ch = curl_init();
+				
+			curl_setopt($ch, CURLOPT_HEADER, 0);
+			curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+			curl_setopt($ch, CURLOPT_URL, $googleApiUrl);
+			curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+			curl_setopt($ch, CURLOPT_VERBOSE, 0);
+			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+			curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+			curl_setopt($ch, CURLOPT_REFERER, get_bloginfo('url'));
+
+			ingeni_ytplaylist_log('send:.'.print_r($ch,true), $debug);		
+			$response = curl_exec($ch);
+
+			ingeni_ytplaylist_log('reponse:'.print_r($response,true), $debug);
+			curl_close($ch);
+
+		} catch (Exception $ex) {
+			ingeni_ytplaylist_log('ingeni_ytplaylist_get_feed: '.$ex->message, 1);
+		}
+	}
+
+	// Now try and decode the JSON
+	if ( $response ) {			
+		$videoList = json_decode($response);
+		//ingeni_ytplaylist_log('list:'.print_r($videoList,true), $debug);
+
+
+		// Finally, delete the existing cache and write the new one, but only if we just fetched a fresh feed
+		if ( !$use_cache ) {
+			if ( file_exists( $cached_json ) ) {
+				unlink( $cached_json );
+			}
+
+			$cache_file = fopen($cached_json, 'w');
+			fwrite($cache_file, $response);
+			fclose($cache_file);
+		}
+	}
+
+	return $videoList;
+}
 
 add_shortcode("ingeni-youtube-playlist", "ingeni_youtube_playlist");
 function ingeni_youtube_playlist( $atts ) {
@@ -58,7 +144,6 @@ function ingeni_youtube_playlist( $atts ) {
 	$retHtml = "";
 
 	ingeni_ytplaylist_log(print_r($params,true), $params['debug']);
-
 	$googleApiUrl = '';
 	$isPlaylist = false;  // True if pulling a playlist, false if pulling a channel
 
@@ -80,34 +165,10 @@ function ingeni_youtube_playlist( $atts ) {
 			$googleApiUrl = 'https://www.googleapis.com/youtube/v3/search?order=date&part=snippet&channelId='.$params['channel_id'].'&key='.$apikey.'&maxResults='.$params['max_results'];
 		}
 		ingeni_ytplaylist_log('url:.'.$googleApiUrl, $params['debug']);
+		$videoList = null;
 
 		if ( $googleApiUrl ) {
-			$videoList = null;
-			try {
-				$ch = curl_init();
-					
-				curl_setopt($ch, CURLOPT_HEADER, 0);
-				curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-				curl_setopt($ch, CURLOPT_URL, $googleApiUrl);
-				curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-				curl_setopt($ch, CURLOPT_VERBOSE, 0);
-				curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-				curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-				curl_setopt($ch, CURLOPT_REFERER, get_bloginfo('url'));
-
-				ingeni_ytplaylist_log('send:.'.print_r($ch,true), $params['debug']);		
-				$response = curl_exec($ch);
-
-
-				ingeni_ytplaylist_log('reponse:.'.print_r($response,true), $params['debug']);
-				curl_close($ch);
-						
-				$videoList = json_decode($response);
-				ingeni_ytplaylist_log('list:'.print_r($videoList,true), $params['debug']);
-
-			} catch (Exception $ex) {
-				ingeni_ytplaylist_log('ingeni_youtube_videos: '.$ex->message, 1);
-			}
+			$videoList = ingeni_ytplaylist_get_feed( $googleApiUrl,  $params['debug'] );
 
 			$video_count = 0;
 			if ( !empty($videoList) ) {
@@ -192,6 +253,7 @@ function ingeni_youtube_playlist( $atts ) {
 	return $retHtml;
 }
 
+
 if (!function_exists("ingeni_ytplaylist_log")) {
 	function ingeni_ytplaylist_log($msg, $debug = 0) {
 		if ( $debug > 0 ) {
@@ -208,6 +270,7 @@ if (!function_exists("ingeni_ytplaylist_log")) {
 		}
 	}
 }
+
 
 
 function ingeni_load_ytplaylist() {

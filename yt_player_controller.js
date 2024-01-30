@@ -16,18 +16,19 @@ function loadYtPlayers(targetId, embedClass) {
     const targetDiv = document.getElementById(targetId);
     var originUrl = document.location.origin;
 
+    if ( targetDiv ) {
 //console.log('targetDiv: '+targetDiv.id);
-    if ( (targetDiv) && (embedClass) ) {
+        var player;
 //console.log('embedclass='+embedClass);
         const playerDivs = targetDiv.getElementsByClassName(embedClass);
-        if (playerDivs) {
-//console.log('playerDivs: '+playerDivs.length);
+        if ( playerDivs ) {
+            //console.log('playerDivs: '+playerDivs.length);
             for (let i = 0; i < playerDivs.length; i++) {
-        
+
                 var playerDivId = playerDivs[i].id;
                 const thisVideoDiv = document.getElementById(playerDivId);
                 let thisVideoId = thisVideoDiv.getAttribute("data-src");
-        
+
                 var player;
                 player = new YT.Player(playerDivId, {
                     height: '390',
@@ -45,6 +46,7 @@ function loadYtPlayers(targetId, embedClass) {
         }
     }
 }
+
 
 // The player is ready!
 function onPlayerReady(event) {

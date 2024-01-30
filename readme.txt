@@ -22,7 +22,9 @@ Display a grid of YouTube videos from a playlist or channel.
 
 2. Activate the plugin through the 'Plugins' menu in WordPress.
 
-3. Display the videos using the shortcode
+3. Add you YouTube API key via the settings.
+
+4. Display the videos using the shortcode
 
 
 
@@ -79,17 +81,13 @@ The following parameters may be included:
 
 channel_id: The ID of the YouTube channel you wish to display.
 
-
 playlist_id: The ID of the YouTube playlist you wish to display.
-
 
 yt_api_key: A valid Google API key, that provides access to the YouTube Data API v3. This can be obtained from https://console.cloud.google.com/apis/library.
 
 class: Wrapping class name for all of the videos. Defaults to 'yt_videos'.
 
-
 max_results: Max. number of videos to display. Default = 6.
-
 
 framework: Both Bootstrap 5 and Foundation 6 row and column classes are supported.
 
@@ -99,9 +97,7 @@ To use Foundation 6 classes:
 
 If no framework value is provide, Bootstrap 5 classes are used.
 
-
-debug: Switch on debug logging. 1 = on. 0 = off (default). Debug logs are written to the /wp-content/uploads folder.
-
+debug: Set to 1 to switch onn debug logging. Default = 0 (off).
 
 
 
@@ -112,6 +108,6 @@ v2024.01 - Initial version
 v2024.02 - Added options page to the Settings menu.
 	 - Improved on-screen error reporting.
 
-v2024.03 - Improved JS to handle pages with no YT videos.
+v2024.03 - Added 'debug' parameter to the shortcode
 
-v2024.04 - Added the 'debug' parameter to the shortcode.
+v2024.04 - Added caching support. 0 = no caching. 10080mins = 1 week. Default = 1440mins (1 day).

@@ -16,3 +16,6 @@ div.ingeni_youtube_playlist_settings table tr td:nth-child(2) {
 div.ingeni_youtube_playlist_settings p {
     margin: 0 0 15px 0;
 }
+div.ingeni_youtube_playlist_settings input.button.button-primary {
+    margin-right: 10px;
+}
