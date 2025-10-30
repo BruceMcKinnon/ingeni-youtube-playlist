@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Ingeni YouTube Playlist
-Version: 2024.04
+Version: 2025.03
 Plugin URI: http://ingeni.net
 Author: Bruce McKinnon - ingeni.net
 Author URI: http://ingeni.net
@@ -33,11 +33,17 @@ v2024.02 - Added options page to the Settings menu.
 v2024.03 - Improved JS to handle pages with no YT videos.
 v2024.04 - Added 'debug' parameter to the shortcode
 		 - Added caching support
+
+v2025.01 - Added custom templates
+v2025.02 - Implemented mainstage mode
+v2025.03 - Fixed path to custom templates.
+		 - Now supports a thumbnails folder - saves the default thumbnails, but also allows you to replace them.
+		 - Implement the video_ids parameter.
 */
 
 
 define("IYTPL_API_KEY", "ingeni_ytplaylist_api_key");
-define("IYTPL_FEED_CACHE", "ingeni_ytplaylist_feed.json");
+define("IYTPL_FEED_CACHE", "iytpl_");
 define("IYTPL_FEED_CACHE_MINS", 'ingeni_ytplaylist_cache_mins');
 define("IYTPL_FEED_CACHE_MINS_DEFAULT", 1440);
 
@@ -47,14 +53,14 @@ define("CLEAR_IYTPL_CACHE", "Clear Cache");
 include_once('ingeni-youtube-playlist-settings.php');
 
 
-function ingeni_ytplaylist_get_feed( $googleApiUrl, $debug = 0 ) {
+function ingeni_ytplaylist_get_feed( $googleApiUrl, $debug = 0, $cache_id = '' ) {
 	$use_cache = false;
 	$cache_file = null;
 
 	$videoList = '';
 
 	$upload_dir = wp_upload_dir();
-	$cached_json = $upload_dir['basedir'] . '/' . IYTPL_FEED_CACHE;
+	$cached_json = $upload_dir['basedir'] . '/' . IYTPL_FEED_CACHE . $cache_id . '.json';
 
 	ingeni_ytplaylist_log('cache file:'.$cached_json, $debug);
 
@@ -82,8 +88,6 @@ function ingeni_ytplaylist_get_feed( $googleApiUrl, $debug = 0 ) {
 		}
 	}
 
-
-
 	if ( !$use_cache ) {
 		try {
 			$ch = curl_init();
@@ -107,6 +111,7 @@ function ingeni_ytplaylist_get_feed( $googleApiUrl, $debug = 0 ) {
 			ingeni_ytplaylist_log('ingeni_ytplaylist_get_feed: '.$ex->message, 1);
 		}
 	}
+
 
 	// Now try and decode the JSON
 	if ( $response ) {			
@@ -133,13 +138,19 @@ add_shortcode("ingeni-youtube-playlist", "ingeni_youtube_playlist");
 function ingeni_youtube_playlist( $atts ) {
 
 	$params = shortcode_atts( array(
-		'class' => 'yt_videos',
+		'class' => 'iytpl_videos',
 		'channel_id' => '',
 		'playlist_id' => '',
 		'max_results' => 6,
 		'yt_api_key' => '',
-		'framework' => 'bootstrap',
+		'framework' => 'grid',
 		'debug' => 0,
+		'show_title' => 1,
+		'show_image' => 1,
+		'show_description' => 1,
+		'mode' => 0,  // Mode. 0 = grid of players, 1 - lightbox mode, 2 - mainstage mode
+		'template_file' => '',
+		'video_ids' => '', // List of YT video IDs comma-seperated
 	), $atts );
 
 	$retHtml = "";
@@ -147,6 +158,25 @@ function ingeni_youtube_playlist( $atts ) {
 	ingeni_ytplaylist_log(print_r($params,true), $params['debug']);
 	$googleApiUrl = '';
 	$isPlaylist = false;  // True if pulling a playlist, false if pulling a channel
+	$isVideoList = false;
+
+	// Get the plugin version number
+	$plugin_data = get_plugin_data( __FILE__ );
+	$plugin_version = $plugin_data['Version'];
+
+	// If using standard grid layout mode, enqueue specific JS and CSS
+	if ($params['mode'] == 0) {
+		wp_register_script( 'yt_iframe_controller', plugins_url('/yt_player_controller.js',__FILE__), null, '0', true );
+		wp_enqueue_script( 'yt_iframe_controller' );
+		wp_enqueue_style( 'yt_std_template_style', plugins_url('/ingeni-youtube-playlist.css',__FILE__), $plugin_version );
+	}
+	// If using Mainstage mode, enqueue specific JS and CSS
+	if ($params['mode'] == 2) {
+		wp_register_script( 'yt_mainstage_controller', plugins_url('/iytpl-mainstage-controller.js',__FILE__), null, '0', true );
+		wp_enqueue_script( 'yt_mainstage_controller' );
+		wp_enqueue_style( 'yt_mainstage_style', plugins_url('/iytpl-mainstage-controller.css',__FILE__), $plugin_version );
+	}
+
 
 	// YouTube Data API v3 key
 	$apikey = $params['yt_api_key'];
@@ -158,46 +188,144 @@ function ingeni_youtube_playlist( $atts ) {
 		$retHtml = '<p>ERROR: You must provide a Google API key with the YouTube Data API v3 AND YouTube Embedded Player API enabled.</p><p>Please make sure the key is permitted for use on your domain name.</p>';
 	} else {
 
-		if ( $params['playlist_id'] ) {
-			$isPlaylist = true;
-			$googleApiUrl = 'https://youtube.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults='.$params['max_results'].'&playlistId='.$params['playlist_id'].'&key='.$apikey;
+		$cache_id = '';
+		if ( $params['video_ids'] ) {
+			//$videoList = explode(',', $params['video_ids'] );
+			$isVideoList = true;
+			$isPlaylist = false;
 
-		} elseif ( $params['channel_id'] ) {
-			$googleApiUrl = 'https://www.googleapis.com/youtube/v3/search?order=date&part=snippet&channelId='.$params['channel_id'].'&key='.$apikey.'&maxResults='.$params['max_results'];
+			$googleApiUrl = 'https://www.googleapis.com/youtube/v3/videos?part=snippet&key='.$apikey.'&id='.$params['video_ids'];
+			$cache_id = str_replace(',','_',$params['video_ids']);
+
+			//$googleApiUrl = 'https://www.googleapis.com/youtube/v3/videos?part=snippet&key='.$apikey.'&id=AHJj25PBIhg';
+
+		} else {
+			$isVideoList = false;
+			if ( $params['playlist_id'] ) {
+				$isPlaylist = true;
+				$googleApiUrl = 'https://youtube.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults='.$params['max_results'].'&playlistId='.$params['playlist_id'].'&key='.$apikey;
+				$cache_id = $params['playlist_id'];
+
+			} elseif ( $params['channel_id'] ) {
+				$googleApiUrl = 'https://www.googleapis.com/youtube/v3/search?order=date&part=snippet&channelId='.$params['channel_id'].'&key='.$apikey.'&maxResults='.$params['max_results'];
+				$cache_id = $params['channel_id'];
+			}
 		}
+
 		ingeni_ytplaylist_log('url:.'.$googleApiUrl, $params['debug']);
 		$videoList = null;
 
 		if ( $googleApiUrl ) {
-			$videoList = ingeni_ytplaylist_get_feed( $googleApiUrl,  $params['debug'] );
+			$videoList = ingeni_ytplaylist_get_feed( $googleApiUrl,  $params['debug'], $cache_id );
+		}
 
-			$video_count = 0;
-			if ( !empty($videoList) ) {
+		$video_count = 0;
+		if ( !empty($videoList) ) {
 
-				if ( isset( $videoList->error ) ) {
-					$retHtml = '<p>API ERROR: Code: '.$videoList->error->code.' - '.$videoList->error->message.'</p>';
-					foreach($videoList->error->errors as $error) {
-						$retHtml .= '<p>   '.$error->message.' Domain: '.$error->domain.' Reason: '.$error->reason.'</p>';
+			if ( isset( $videoList->error ) ) {
+				$retHtml = '<p>API ERROR: Code: '.$videoList->error->code.' - '.$videoList->error->message.'</p>';
+				foreach($videoList->error->errors as $error) {
+					$retHtml .= '<p>   '.$error->message.' Domain: '.$error->domain.' Reason: '.$error->reason.'</p>';
+				}
+				$retHtml .= '<p>Playlist ID: '.$params['playlist_id'].'</p>';
+				$retHtml .= '<p>Channel ID: '.$params['channel_id'].'</p>';
+			
+			} elseif ( isset( $videoList->items ) ) {
+
+				$attributes = array();
+				$attributes['debug'] = $params['debug'];
+				$attributes['framework'] = $params['framework'];
+				$attributes['wrapperClass'] = $params['class'];
+				$attributes['showTitle'] = $params['show_title'];
+				$attributes['showImage'] = $params['show_image'];
+				$attributes['showDescription'] = $params['show_description'];
+				$attributes['mode'] = $params['mode'];
+				$attributes['debugMode'] = $params['debug'];
+
+				$template_file = $params['template_file'];
+
+				//
+				// Use a custom template?
+				//
+				if ( $template_file != '' ) {
+
+					if ( file_exists( plugin_dir_path( __FILE__ ) . 'templates/'.$template_file ) ) {
+						$template_file = plugin_dir_path( __FILE__ ) . 'templates/'.$template_file;
 					}
-					$retHtml .= '<p>Playlist ID: '.$params['playlist_id'].'</p>';
-					$retHtml .= '<p>Channel ID: '.$params['channel_id'].'</p>';
-				
-				} elseif ( isset( $videoList->items ) ) {
-					// Framework row divs
-					if ( $params['framework'] == 'foundation' ) {
-						$retHtml = '<div class="grid-container '.$params['class'].'" id="ytEmbeds"><div class="grid-x grid-margin-x">';
+
+					if ( file_exists( get_template_directory() .'/ingeni-youtube-playlist/'.$template_file ) ) {
+						$template_file = get_template_directory() .'/ingeni-youtube-playlist/'.$template_file;
+					}
+
+					if ( file_exists( get_stylesheet_directory() .'/ingeni-youtube-playlist/'.$template_file ) ) {
+						$template_file = get_stylesheet_directory() .'/ingeni-youtube-playlist/'.$template_file;
+					}
+				}
+				ingeni_ytplaylist_log('custom template_file:'.$template_file);
+		
+				$has_template = false;
+				if ( file_exists( $template_file ) ) {
+					// Custom template exists
+					$has_template = true;
+				} else {
+					// Use the standard template
+					$template_file = plugin_dir_path( __FILE__ ) . 'templates/iytpl_template_std.php';
+					if ( file_exists( $template_file ) ) {
+						$has_template = true;
+					}
+				}
+
+				$templateRenderer = null;
+				if ( !$has_template ) {
+					$retHtml = '<p>Sorry, there is no template available to display the latest posts!</p>';
+
+				} else {
+					// Include the template file
+					include_once($template_file);
+					//fb_log('using template: '.$template_file);
+
+					// Instantiate the renderer class
+					if ( class_exists("iytpl_template") ) {
+						$templateRenderer = new ilp_template( $attributes );
+
 					} else {
-						$retHtml = '<div class="row '.$params['class'].'" id="ytEmbeds">';
+						$name_space = basename($template_file, '.php');
+						$class_name = $name_space."\iytpl_template";
+						if ( class_exists($class_name) ) {
+							$templateRenderer = new $class_name( $attributes );
+						} else {
+							$retHtml = '<p>Sorry, the latest posts template '.$template_file. ' does not support the mandatory functions.</p>';
+						}
+					}
+				}
+
+				if ( $templateRenderer ) {
+
+					// Open the wrapper divs
+					$retHtml .= $templateRenderer->iytpl_get_block_wrapper_open();
+
+
+					// Mainstage mode
+					if ( $params['mode'] == 2 ) {
+						$retHtml .= '<div id="iytplMainstageWrapper"><div id="iytplMainstagePoster"></div><div id="iytplMainstage" class="iytplMainstage" style="margin-bottom: 20px;"></div></div>
+						<div class="iytpl-thumbnails">';
 					}
 
 					foreach($videoList->items as $item){
 						//Embed video
-						$video_id = $title = $description = '';
+						$video_id = $title = $description = $thumbnail_url = $fallback_thumb = '';
 						if ( $isPlaylist ) {
 							if (isset($item->id)) {
 								$video_id = $item->snippet->resourceId->videoId;
 								$title = $item->snippet->title;
 								$description = $item->snippet->description;
+							}
+						} elseif ( $isVideoList ) {
+							if (isset($item->id)) {
+								$video_id = $item->id;
+								$title = $item->snippet->title;
+								$description = $item->snippet->description;
+								$fallback_thumb = $item->snippet->thumbnails->standard->url;
 							}
 						} else {
 							if (isset($item->id->videoId)) {
@@ -205,6 +333,10 @@ function ingeni_youtube_playlist( $atts ) {
 								$title = $item->snippet->title;
 								$description = $item->snippet->description;
 							}
+						}
+
+						if ( $params['mode'] > 0 ) {
+							$thumbnail_url = iytpl_get_thumbnail($video_id, $fallback_thumb);
 						}
 
 
@@ -218,42 +350,100 @@ function ingeni_youtube_playlist( $atts ) {
 
 						if ( $video_id ) {
 							$video_count += 1;
-							// Framework column divs
-							if ( $params['framework'] == 'foundation' ) {
-								$retHtml .= '<div class="cell small-12 large-6 bottom-30">';
-							} else {
-								$retHtml .= '<div class="col-12 col-lg-6 bottom-30">';
-							}
-							
-								$retHtml .=' <div class="ratio ratio-16x9 video-embed">';
-									$retHtml .= '<div class="embed-iframe" data-src="'.$video_id.'" id="yt_video_'.$video_count.'"></div>';
-								$retHtml .= '</div>';
 
-								$retHtml .= '<h2>'.$title.'</h2>';
-								$retHtml .= '<div class="desc">'.$description.'</div>';
-								
-							// Close framework column divs
-							$retHtml .= '</div>';
+							$retHtml .= $templateRenderer->iytpl_render_one_post( $video_id, $video_count, $title, $description, $thumbnail_url );
 						}
 					}
 
-					// Close framework row divs
-					if ( $params['framework'] == 'foundation' ) {
-						$retHtml .= '</div></div>';
-					} else {
-						$retHtml .= '</div>';
+					if ( $params['mode'] == 1 ) {
+						$retHtml .= '</div>';  // close .iytpl-thumbnails
 					}
 
+					// Close the wrapper divs
+					$retHtml .= $templateRenderer->iytpl_get_block_wrapper_close();
+
+
+
+					$templateRenderer = null;
 				}
+
+			} else {
+				$retHtml = '<p>ERROR: You must provide a YouTube channel ID, or playlist ID.</p>';
 			}
-		} else {
-			$retHtml = '<p>ERROR: You must provide a YouTube channel ID, or playlist ID.</p>';
 		}
 	}
 
 	return $retHtml;
 }
 
+
+// Get the thumbnail for the video - stored as the videoid.ext
+// Support webp and jpg files only
+function iytpl_get_thumbnail($video_id, $fallbackThumb = '') {
+	$thumbFile = '';
+
+	if ( $video_id ) {
+		$matching_files = null;
+
+		// Check for a thumbnails folder in the current theme folder
+		if ( file_exists( get_template_directory() .'/ingeni-youtube-playlist/thumbnails' ) ) {
+			$matching_files = glob(  get_template_directory() .'/ingeni-youtube-playlist/thumbnails/'.$video_id.'.*' );
+
+			if ( is_array($matching_files) && ( count($matching_files) > 0 ) ) {
+				if ( in_array(  get_template_directory() .'/ingeni-youtube-playlist/thumbnails/' . $video_id.'.webp', $matching_files ) ) {
+					$thumbFile = get_stylesheet_directory_uri() . '/ingeni-youtube-playlist/thumbnails/' . $video_id.'.webp';
+				} elseif ( in_array(  get_template_directory() .'/ingeni-youtube-playlist/thumbnails/' . $video_id.'.jpg', $matching_files ) ) {
+					$thumbFile = get_stylesheet_directory_uri() . '/ingeni-youtube-playlist/thumbnails/' . $video_id.'.jpg';
+				}
+			}
+		}
+
+		if ( ! $thumbFile ) {
+			// Create the default thumbnails folder
+			if ( ! file_exists( plugin_dir_path( __FILE__ ) . 'thumbnails' ) ) {
+				mkdir( plugin_dir_path( __FILE__ ) . 'thumbnails', 0755 );
+			}
+
+			// Check for a thumbnails folder in the plugin folder
+			$matching_files = glob( plugin_dir_path( __FILE__ ) . 'thumbnails/'.$video_id.'.*');
+
+			if ( is_array($matching_files) && ( count($matching_files) > 0 ) ) {
+				if ( in_array(  get_template_directory() .'/ingeni-youtube-playlist/thumbnails/' . $video_id.'.webp', $matching_files ) ) {
+					$thumbFile = plugin_dir_url( __FILE__ ) . 'thumbnails/' . $video_id . '.webp';
+				} elseif ( in_array(  get_template_directory() .'/ingeni-youtube-playlist/thumbnails/' . $video_id.'.jpg', $matching_files ) ) {
+					$thumbFile = plugin_dir_url( __FILE__ ) . 'thumbnails/' . $video_id . '.jpg';
+				}
+			}
+		}
+
+		if ( ! $thumbFile ) {
+			if ( !$fallbackThumb) {
+				$thumbUrl = 'https://img.youtube.com/vi/'.$video_id.'/maxresdefault.jpg';
+			} else {
+				$thumbUrl = $fallbackThumb;
+			}
+
+			$imageContent = file_get_contents( $thumbUrl );
+
+			if ($imageContent !== false) {
+				// Save the image content to the local file
+				$localFilePath = plugin_dir_path( __FILE__ ) . 'thumbnails/'.$video_id.'.jpg';
+				if ( file_put_contents( $localFilePath, $imageContent ) !== false) {
+					$thumbFile = plugin_dir_url( __FILE__ ) . 'thumbnails/' . $video_id.'.jpg';
+			
+				} else {
+					ingeni_ytplaylist_log( "Error saving image to: " . $localFilePath, true );
+				}
+			} else {
+				ingeni_ytplaylist_log ( "Error retrieving image from URL: " . $imageUrl, true );
+			}
+
+		}
+
+	}
+
+	return $thumbFile;
+}
 
 if (!function_exists("ingeni_ytplaylist_log")) {
 	function ingeni_ytplaylist_log($msg, $debug = 0) {
@@ -276,11 +466,7 @@ if (!function_exists("ingeni_ytplaylist_log")) {
 
 function ingeni_load_ytplaylist() {
 	// YouTube iframe player API - needed to stop multiple videos running at the same time.
-	wp_enqueue_script( 'yt_iframe', 'https://www.youtube.com/iframe_api', array(), 0, true );
-
-	wp_register_script( 'yt_iframe_controller', plugins_url('/yt_player_controller.js',__FILE__), null, '0', true );
-	wp_enqueue_script( 'yt_iframe_controller' );
-
+	wp_enqueue_script( 'yt_iframe', 'https://www.youtube.com/iframe_api', array(), null, true );
 
 	// Init auto-update from GitHub repo
 	require 'plugin-update-checker/plugin-update-checker.php';

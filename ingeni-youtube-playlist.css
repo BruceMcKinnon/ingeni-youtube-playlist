@@ -1,0 +1,21 @@
+/* Ingeni YouTube playList - standard video template CSS */
+.iytpl_videos {
+  display: grid;
+  width: 100%;
+  grid-template-columns: auto;
+  max-width: 1200px !important;
+  gap: 15px;
+}
+
+@media screen and (min-width: 768px) {
+  .iytpl_videos {
+    grid-template-columns: auto auto;
+  }
+}
+
+@media screen and (min-width: 991px) {
+  .iytpl_videos {
+    grid-template-columns: auto auto auto;
+  }
+}
+
