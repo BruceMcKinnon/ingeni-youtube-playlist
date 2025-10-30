@@ -4,15 +4,17 @@ Contributors: Bruce McKinnon
 Tags: video, YouTube
 Requires at least: 6.0
 Tested up to: 6.4
-Stable tag: 2025.03
+Stable tag: 2025.04
 
-Display a grid of YouTube videos from a playlist or channel.
+Display a grid, lightbox or mainstage of YouTube videos from a playlist or channel, or a list of video IDs
 
 
 
 == Description ==
 
-* - Displays a grid of videos from a users YouTube playlist or channel
+* - Displays a grid of videos from a users YouTube playlist or channel, or supply a list of individula video IDs.
+
+* - Can be displayed as a simple grid with individual players, a grid of thumbnails with a single mainstage player, or a grid of thumbnails that open in a full-screen lightbox.
 
 
 
@@ -95,8 +97,8 @@ Or:
 [ingeni-youtube-playlist playlist_id="{your-youtube-playlist-id}"]
 
 
-The following parameters may be included:
 
+The following parameters may be included:
 
 channel_id: The ID of the YouTube channel you wish to display.
 
@@ -121,7 +123,7 @@ If no framework value is provide, Bootstrap 5 classes are used.
 
 debug: Set to 1 to switch on debug logging. Default = 0 (off).
 
-mode: Specify whether to show a grid of individual YT players, or a 'MainStage' layout with a single player and clickable thumbnails of the individual videos. 0 = grid of players, 2 = mainstage mode
+mode: Specify whether to show a grid of individual YT players, or a 'MainStage' layout with a single player and clickable thumbnails of the individual videos. 0 = grid of players, 1 = lightbox, 2 = mainstage mode
 		'template_file' => '',
 		'video_ids' => '', // List of YT video IDs comma-seperated
 
@@ -154,3 +156,5 @@ v2025.02 - Implemented mainstage mode
 v2025.03 - Fixed path to custom templates.
 	 - Now supports a thumbnails folder - saves the default thumbnails, but also allows you to replace them.
 	 - Implements the video_ids parameter.
+
+v2025.04 - Added support for a fullscreen lightbox via mode=1

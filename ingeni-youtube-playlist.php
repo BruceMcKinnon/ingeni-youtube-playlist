@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Ingeni YouTube Playlist
-Version: 2025.03
+Version: 2025.04
 Plugin URI: http://ingeni.net
 Author: Bruce McKinnon - ingeni.net
 Author URI: http://ingeni.net
@@ -39,6 +39,7 @@ v2025.02 - Implemented mainstage mode
 v2025.03 - Fixed path to custom templates.
 		 - Now supports a thumbnails folder - saves the default thumbnails, but also allows you to replace them.
 		 - Implement the video_ids parameter.
+v2025.04 - Added Lightbox mode. mode = 1
 */
 
 
@@ -165,16 +166,35 @@ function ingeni_youtube_playlist( $atts ) {
 	$plugin_version = $plugin_data['Version'];
 
 	// If using standard grid layout mode, enqueue specific JS and CSS
+
 	if ($params['mode'] == 0) {
 		wp_register_script( 'yt_iframe_controller', plugins_url('/yt_player_controller.js',__FILE__), null, '0', true );
 		wp_enqueue_script( 'yt_iframe_controller' );
 		wp_enqueue_style( 'yt_std_template_style', plugins_url('/ingeni-youtube-playlist.css',__FILE__), $plugin_version );
+		// Default template
+		if ( $params['template_file'] == '' ) {
+			 $params['template_file'] = 'iytpl_template_std.php';
+		}
+	}
+	// If using Lightbox mode, enqueue specific JS and CSS
+	if ($params['mode'] == 1) {
+		wp_register_script( 'yt_lightbox_controller', plugins_url('/iytpl-lightbox-controller.js',__FILE__), null, '0', true );
+		wp_enqueue_script( 'yt_lightbox_controller' );
+		wp_enqueue_style( 'yt_lightbox_style', plugins_url('/iytpl-lightbox-controller.css',__FILE__), $plugin_version );
+		// Default template
+		if ( $params['template_file'] == '' ) {
+			 $params['template_file'] = 'iytpl_template_lightbox.php';
+		}
 	}
 	// If using Mainstage mode, enqueue specific JS and CSS
 	if ($params['mode'] == 2) {
 		wp_register_script( 'yt_mainstage_controller', plugins_url('/iytpl-mainstage-controller.js',__FILE__), null, '0', true );
 		wp_enqueue_script( 'yt_mainstage_controller' );
 		wp_enqueue_style( 'yt_mainstage_style', plugins_url('/iytpl-mainstage-controller.css',__FILE__), $plugin_version );
+		// Default template
+		if ( $params['template_file'] == '' ) {
+			 $params['template_file'] = 'iytpl_template_mainstage.php';
+		}
 	}
 
 
@@ -193,6 +213,8 @@ function ingeni_youtube_playlist( $atts ) {
 			//$videoList = explode(',', $params['video_ids'] );
 			$isVideoList = true;
 			$isPlaylist = false;
+
+			$params['video_ids'] = str_replace(' ','',$params['video_ids']);
 
 			$googleApiUrl = 'https://www.googleapis.com/youtube/v3/videos?part=snippet&key='.$apikey.'&id='.$params['video_ids'];
 			$cache_id = str_replace(',','_',$params['video_ids']);
@@ -305,10 +327,12 @@ function ingeni_youtube_playlist( $atts ) {
 					$retHtml .= $templateRenderer->iytpl_get_block_wrapper_open();
 
 
-					// Mainstage mode
-					if ( $params['mode'] == 2 ) {
-						$retHtml .= '<div id="iytplMainstageWrapper"><div id="iytplMainstagePoster"></div><div id="iytplMainstage" class="iytplMainstage" style="margin-bottom: 20px;"></div></div>
-						<div class="iytpl-thumbnails">';
+					// Lightbox / Mainstage mode
+					if ( $params['mode'] > 0 ) {
+						if ( $params['mode'] == 2 ) {
+							$retHtml .= '<div id="iytplMainstageWrapper"><div id="iytplMainstagePoster"></div><div id="iytplMainstage" class="iytplMainstage" style="margin-bottom: 20px;"></div></div>';
+						}
+						$retHtml .= '<div class="iytpl-thumbnails">';
 					}
 
 					foreach($videoList->items as $item){
@@ -355,9 +379,15 @@ function ingeni_youtube_playlist( $atts ) {
 						}
 					}
 
+					
+					if ( $params['mode'] > 0 ) {
+						$retHtml .= '</div>';  // close .iytpl-thumbnails
+					}
+					/*
 					if ( $params['mode'] == 1 ) {
 						$retHtml .= '</div>';  // close .iytpl-thumbnails
 					}
+					*/
 
 					// Close the wrapper divs
 					$retHtml .= $templateRenderer->iytpl_get_block_wrapper_close();
